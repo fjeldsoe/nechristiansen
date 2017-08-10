@@ -10,61 +10,100 @@ class App extends Component {
 	constructor() {
 		super()
 
-		this.provider = new firebase.auth.FacebookAuthProvider()
-
-		firebase.auth().signInWithPopup(this.provider).then(function(result) {
-		  console.log(result);
-		}).catch(function(error) {
-		  console.log(error);
-		});
-
 		this.storageRef = firebase.storage().ref()
 
-		this.drop_handler = this.drop_handler.bind(this)
-		this.dragover_handler = this.dragover_handler.bind(this)
+		this.login = this.login.bind(this)
+		this.logout = this.logout.bind(this)
+
+		this.onDrop = this.onDrop.bind(this)
+		this.onDragOver = this.onDragOver.bind(this)
+		this.onDragEnd = this.onDragEnd.bind(this)
+
+		this.state = {isLoggedIn: false}
+
+		firebase.auth().onAuthStateChanged(user => {
+			if (user) {
+				this.setState({
+					isLoggedIn: true,
+					userName: user.displayName
+				})
+			} else {
+				this.setState({
+					isLoggedIn: false,
+					userName: ''
+				})
+			}
+		});
 
 	}
 
-	drop_handler(ev) {
-		console.log("Drop");
-		ev.preventDefault();
+	onDrop(event) {
+		event.preventDefault()
 		// If dropped items aren't files, reject them
-		var dt = ev.dataTransfer;
-		if (dt.items) {
-			// Use DataTransferItemList interface to access the file(s)
-			for (var i=0; i < dt.items.length; i++) {
-				if (dt.items[i].kind === "file") {
-					var f = dt.items[i].getAsFile();
-					console.log(f.name)
-					const uploadTask = this.storageRef.child('/images/' + f.name).put(f)
-					uploadTask.then(function(snapshot) {
-					  console.log('Uploaded a blob or file!');
-					});
-				}
-			}
-		} else {
-			// Use DataTransfer interface to access the file(s)
-			for (var j=0; j < dt.files.length; j++) {
-				console.log("... file[" + j + "].name = " + dt.files[j].name);
+		var dt = event.dataTransfer;
+		// Use DataTransferItemList interface to access the file(s)
+		for (var i=0; i < dt.items.length; i++) {
+			if (dt.items[i].kind === "file") {
+				var file = dt.items[i].getAsFile();
+				const uploadTask = this.storageRef.child('/images/' + file.name).put(file)
+				uploadTask.then(function(snapshot) {
+					console.log('Uploaded a blob or file!');
+				})
 			}
 		}
 	}
 
-	dragover_handler(ev) {
-		console.log("dragOver");
+	onDragOver(event) {
 		// Prevent default select and drag behavior
-		ev.preventDefault();
+		event.preventDefault();
+	}
+
+	onDragEnd(event) {
+		console.log("dragEnd");
+		// Remove all of the drag data
+		var dt = event.dataTransfer;
+		// Use DataTransferItemList interface to remove the drag data
+		for (var i = 0; i < dt.items.length; i++) {
+			dt.items.remove(i);
+		}
+
+	}
+
+	login() {
+
+		if (this.setState.isLoggedIn) {
+			console.log('user is already logged in')
+			return
+		}
+
+		this.provider = new firebase.auth.FacebookAuthProvider()
+
+		firebase.auth().signInWithPopup(this.provider).then(result => {
+
+		}).catch(error => {
+			console.log(error)
+		});
+	}
+
+	logout() {
+		firebase.auth().signOut().then(() => {
+			// Sign-out successful.
+		}).catch(error => {
+			// An error happened.
+		});
 	}
 
 	render() {
 		return (
-			<div className="App" onDrop={this.drop_handler} onDragOver={this.dragover_handler}>
+			<div className="App" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
 				<div className="App-header">
 					<img src={logo} className="App-logo" alt="logo" />
-					<h2>Welcome to React</h2>
+					<h2>Welcome to React {this.state.userName}</h2>
 				</div>
 				<p className="App-intro">
-					To get started, edit <code>src/App.js</code> and save to reload.
+					{
+						this.state.isLoggedIn ? <span onClick={this.logout}>Logout</span> : <span onClick={this.login}>Login</span>
+					}
 				</p>
 			</div>
 		);
