@@ -2,6 +2,8 @@ import React, { Component } from 'react'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'
+import 'firebase/database'
+import cuid from 'cuid'
 import logo from './images/logo.svg'
 import './App.css'
 
@@ -11,6 +13,7 @@ class App extends Component {
 		super()
 
 		this.storageRef = firebase.storage().ref()
+		this.databaseRef = firebase.database().ref()
 
 		this.login = this.login.bind(this)
 		this.logout = this.logout.bind(this)
@@ -34,6 +37,24 @@ class App extends Component {
 				})
 			}
 		})
+
+		this.databaseRef.child('images').once('value').then(function(snapshot) {
+			this.setState({
+				images: snapshot.val()
+			})
+		});
+	}
+
+	upload(file) {
+		const id = cuid()
+		this.storageRef.child('/images/' + id + '/' + file.name).put(file).then(this.updateImages)
+		this.databaseRef.child('/images/' + id).set({
+		    imageName : file.name
+	  	})
+	}
+
+	updateImages(snapshot) {
+		console.log(snapshot, 'Uploaded a blob or file!');
 	}
 
 	onDrop(event) {
@@ -50,10 +71,7 @@ class App extends Component {
 					return
 				}
 
-				const uploadTask = this.storageRef.child('/images/' + file.name).put(file)
-				uploadTask.then(function(snapshot) {
-					console.log('Uploaded a blob or file!');
-				})
+				this.upload(file)
 			}
 		}
 	}
@@ -110,6 +128,9 @@ class App extends Component {
 						this.state.isLoggedIn ? <span onClick={this.logout}>Logout</span> : <span onClick={this.login}>Login</span>
 					}
 				</p>
+				<div className="grid">
+
+				</div>
 			</div>
 		);
 	}
