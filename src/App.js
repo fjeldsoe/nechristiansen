@@ -33,8 +33,7 @@ class App extends Component {
 					userName: ''
 				})
 			}
-		});
-
+		})
 	}
 
 	onDrop(event) {
@@ -45,6 +44,12 @@ class App extends Component {
 		for (var i=0; i < dt.items.length; i++) {
 			if (dt.items[i].kind === "file") {
 				var file = dt.items[i].getAsFile();
+
+				if (!file.type.includes('image')) {
+					alert('File is not an image')
+					return
+				}
+
 				const uploadTask = this.storageRef.child('/images/' + file.name).put(file)
 				uploadTask.then(function(snapshot) {
 					console.log('Uploaded a blob or file!');
