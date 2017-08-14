@@ -1,4 +1,5 @@
 import React, { Component } from 'react'
+import config from './config'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'
@@ -12,6 +13,8 @@ class App extends Component {
 	constructor() {
 		super()
 
+		firebase.initializeApp(config.firebase)
+
 		this.storageRef = firebase.storage().ref()
 		this.databaseRef = firebase.database().ref()
 
@@ -22,7 +25,10 @@ class App extends Component {
 		this.onDragOver = this.onDragOver.bind(this)
 		this.onDragEnd = this.onDragEnd.bind(this)
 
-		this.state = {isLoggedIn: false}
+		this.state = {
+			isLoggedIn: false,
+			images: []
+		}
 
 		firebase.auth().onAuthStateChanged(user => {
 			if (user) {
@@ -38,11 +44,31 @@ class App extends Component {
 			}
 		})
 
-		this.databaseRef.child('images').once('value').then(function(snapshot) {
-			this.setState({
-				images: snapshot.val()
+		const snapPerformA = performance.now()
+		this.databaseRef.child('images').once('value').then(snapshot => {
+			const snapPerformB = performance.now()
+			console.log('snapPerform', snapPerformB - snapPerformA)
+
+			const promiseUrls = []
+
+			snapshot.forEach(obj => {
+				const urlPerformA = performance.now()
+				const url = this.storageRef.child(`images/${obj.key}/${obj.val().imageName}`).getDownloadURL()
+
+				url.then(() => {
+					const urlPerformB = performance.now()
+					console.log('urlPerformB', urlPerformB - urlPerformA);
+				})
+
+				promiseUrls.push(url)
 			})
-		});
+
+			Promise.all(promiseUrls).then(urls => {
+				this.setState({
+					images: urls
+				})
+			})
+		})
 	}
 
 	upload(file) {
@@ -117,6 +143,7 @@ class App extends Component {
 	}
 
 	render() {
+
 		return (
 			<div className="App" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
 				<div className="App-header">
@@ -129,7 +156,7 @@ class App extends Component {
 					}
 				</p>
 				<div className="grid">
-
+					{this.state.images.map((url, index) => <img src={url} alt="" key={index} />)}
 				</div>
 			</div>
 		);
