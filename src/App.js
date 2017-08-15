@@ -5,7 +5,6 @@ import 'firebase/auth'
 import 'firebase/storage'
 import 'firebase/database'
 import cuid from 'cuid'
-import logo from './images/logo.svg'
 import './App.css'
 
 class App extends Component {
@@ -15,8 +14,8 @@ class App extends Component {
 
 		firebase.initializeApp(config.firebase)
 
-		this.storageRef = firebase.storage().ref()
-		this.databaseRef = firebase.database().ref()
+		this.storageRef = firebase.storage().ref().child('images')
+		this.databaseRef = firebase.database().ref().child('images')
 
 		this.login = this.login.bind(this)
 		this.logout = this.logout.bind(this)
@@ -24,6 +23,9 @@ class App extends Component {
 		this.onDrop = this.onDrop.bind(this)
 		this.onDragOver = this.onDragOver.bind(this)
 		this.onDragEnd = this.onDragEnd.bind(this)
+
+		this.loadImages = this.loadImages.bind(this)
+		this.deleteImage = this.deleteImage.bind(this)
 
 		this.state = {
 			isLoggedIn: false,
@@ -44,47 +46,65 @@ class App extends Component {
 			}
 		})
 
-		const snapPerformA = performance.now()
-		this.databaseRef.child('images').once('value').then(snapshot => {
-			const snapPerformB = performance.now()
-			console.log('snapPerform', snapPerformB - snapPerformA)
+	}
 
-			const promiseUrls = []
+	componentDidMount() {
+		this.events()
+	}
 
-			snapshot.forEach(obj => {
-				const urlPerformA = performance.now()
-				const url = this.storageRef.child(`images/${obj.key}/${obj.val().imageName}`).getDownloadURL()
+	events() {
+		//this.databaseRef.once('value').then(this.loadImages)
+		this.databaseRef.on('value', this.loadImages)
+	}
 
-				url.then(() => {
-					const urlPerformB = performance.now()
-					console.log('urlPerformB', urlPerformB - urlPerformA);
-				})
+	loadImages(snapshot) {
 
-				promiseUrls.push(url)
-			})
+		const promiseUrls = []
+		let imagesArr = []
+		const ids = []
 
-			Promise.all(promiseUrls).then(urls => {
-				this.setState({
-					images: urls
-				})
+		console.log(this.state.images);
+
+		snapshot.forEach(obj => {
+			const url = this.storageRef.child(`${obj.key}/${obj.val().name}`).getDownloadURL()
+			promiseUrls.push(url)
+			imagesArr.push(Object.assign({id: obj.key}, obj.val()))
+			ids.push(obj.key)
+		})
+
+		Promise.all(promiseUrls).then(urls => {
+
+			imagesArr = urls.map((url, index) => Object.assign(imagesArr[index], {url: url}))
+
+			this.setState({
+				images: imagesArr
 			})
 		})
 	}
 
 	upload(file) {
 		const id = cuid()
-		this.storageRef.child('/images/' + id + '/' + file.name).put(file).then(this.updateImages)
-		this.databaseRef.child('/images/' + id).set({
-		    imageName : file.name
-	  	})
+		this.storageRef.child(id + '/' + file.name).put(file).then(() => {
+
+			this.databaseRef.child(id).set({
+				name : file.name
+			}).then(this.updateImages)
+
+		})
 	}
 
-	updateImages(snapshot) {
-		console.log(snapshot, 'Uploaded a blob or file!');
+	updateImages() {
+		console.log('Uploaded a blob or file!');
 	}
 
 	onDrop(event) {
 		event.preventDefault()
+
+		if (!this.state.isLoggedIn) {
+			alert('You must be logged in to upload images')
+			return
+		}
+
 		// If dropped items aren't files, reject them
 		var dt = event.dataTransfer;
 		// Use DataTransferItemList interface to access the file(s)
@@ -100,22 +120,56 @@ class App extends Component {
 				this.upload(file)
 			}
 		}
+		console.log(event.target);
 	}
 
 	onDragOver(event) {
 		// Prevent default select and drag behavior
 		event.preventDefault();
+
+		if (!this.state.isLoggedIn) {
+			return
+		}
 	}
 
 	onDragEnd(event) {
-		console.log("dragEnd");
+
+		if (!this.state.isLoggedIn) {
+			return
+		}
+
 		// Remove all of the drag data
 		var dt = event.dataTransfer;
 		// Use DataTransferItemList interface to remove the drag data
 		for (var i = 0; i < dt.items.length; i++) {
 			dt.items.remove(i);
 		}
+		console.log(event.target);
+	}
 
+	deleteImage(event) {
+
+		if (!this.state.isLoggedIn) {
+			return
+		}
+
+		const imageObj = this.getImageObj(event.target.id)
+		const imageRef = this.storageRef.child(`${imageObj.id}/${imageObj.name}`)
+		const updates = {}
+
+		updates[imageObj.id] = null
+
+		this.databaseRef.update(updates).then(() => {
+			console.log('Deleted database ref');
+			imageRef.delete().then(() => {
+				console.log('Deleted storage ref');
+			}).catch(error => console.error(error))
+		}).catch(error => console.error(error))
+
+	}
+
+	getImageObj(id) {
+		return this.state.images.filter(obj => obj.id === id)[0]
 	}
 
 	login() {
@@ -145,19 +199,19 @@ class App extends Component {
 	render() {
 
 		return (
-			<div className="App" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
-				<div className="App-header">
-					<img src={logo} className="App-logo" alt="logo" />
-					<h2>Welcome to React {this.state.userName}</h2>
-				</div>
-				<p className="App-intro">
+			<div className="app" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
+				<main className="grid">
+					{this.state.images.map((imageObj, index) => (
+						<div className="grid__col" key={index}>
+							<img id={imageObj.id} className="image" src={imageObj.url} alt={imageObj.name} key={index} onClick={this.deleteImage} />
+						</div>
+					))}
+				</main>
+				<footer className="footer">
 					{
-						this.state.isLoggedIn ? <span onClick={this.logout}>Logout</span> : <span onClick={this.login}>Login</span>
+						this.state.isLoggedIn ? <div>Du er logget ind som {this.state.userName} - <span onClick={this.logout}>Log ud</span></div> : <span onClick={this.login}>Log ind</span>
 					}
-				</p>
-				<div className="grid">
-					{this.state.images.map((url, index) => <img src={url} alt="" key={index} />)}
-				</div>
+				</footer>
 			</div>
 		);
 	}
