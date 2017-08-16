@@ -31,6 +31,9 @@ class App extends Component {
 			isLoggedIn: false,
 			images: []
 		}
+	}
+
+	componentDidMount() {
 
 		firebase.auth().onAuthStateChanged(user => {
 			if (user) {
@@ -46,14 +49,10 @@ class App extends Component {
 			}
 		})
 
-	}
-
-	componentDidMount() {
 		this.events()
 	}
 
 	events() {
-		//this.databaseRef.once('value').then(this.loadImages)
 		this.databaseRef.on('value', this.loadImages)
 	}
 
@@ -72,6 +71,8 @@ class App extends Component {
 			ids.push(obj.key)
 		})
 
+		console.log(imagesArr)
+
 		Promise.all(promiseUrls).then(urls => {
 
 			imagesArr = urls.map((url, index) => Object.assign(imagesArr[index], {url: url}))
@@ -84,6 +85,13 @@ class App extends Component {
 
 	upload(file) {
 		const id = cuid()
+		var metadata = {
+			customMetadata: {
+				id: id,
+				name: file.name
+			}
+		}
+
 		this.storageRef.child(id + '/' + file.name).put(file).then(() => {
 
 			this.databaseRef.child(id).set({
