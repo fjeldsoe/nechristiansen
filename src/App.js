@@ -62,16 +62,12 @@ class App extends Component {
 		let imagesArr = []
 		const ids = []
 
-		console.log(this.state.images);
-
 		snapshot.forEach(obj => {
 			const url = this.storageRef.child(`${obj.key}/${obj.val().name}`).getDownloadURL()
 			promiseUrls.push(url)
 			imagesArr.push(Object.assign({id: obj.key}, obj.val()))
 			ids.push(obj.key)
 		})
-
-		console.log(imagesArr)
 
 		Promise.all(promiseUrls).then(urls => {
 
@@ -85,24 +81,14 @@ class App extends Component {
 
 	upload(file) {
 		const id = cuid()
-		var metadata = {
+		const metadata = {
 			customMetadata: {
 				id: id,
 				name: file.name
 			}
 		}
 
-		this.storageRef.child(id + '/' + file.name).put(file).then(() => {
-
-			this.databaseRef.child(id).set({
-				name : file.name
-			}).then(this.updateImages)
-
-		})
-	}
-
-	updateImages() {
-		console.log('Uploaded a blob or file!');
+		this.storageRef.child(id + '/' + file.name).put(file, metadata)
 	}
 
 	onDrop(event) {
