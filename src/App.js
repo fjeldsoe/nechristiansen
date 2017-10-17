@@ -1,4 +1,8 @@
 import React, { Component } from 'react'
+import {
+  Route,
+  Link
+} from 'react-router-dom'
 import config from './config'
 import firebase from 'firebase/app'
 import 'firebase/auth'
@@ -6,6 +10,8 @@ import 'firebase/storage'
 import 'firebase/database'
 import cuid from 'cuid'
 import './App.css'
+import Gallery from './Gallery'
+
 
 class App extends Component {
 
@@ -194,13 +200,8 @@ class App extends Component {
 
 		return (
 			<div className="app" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
-				<main className="grid">
-					{this.state.images.map((imageObj, index) => (
-						<div className="grid__col" key={index}>
-							<img id={imageObj.id} className="image" src={imageObj.url} alt={imageObj.name} key={index} onClick={this.deleteImage} />
-						</div>
-					))}
-				</main>
+				<Route exact path="/" component={Gallery} />
+                <Route exact path="/:id" component={Gallery} />
 				<footer className="footer">
 					{
 						this.state.isLoggedIn ? <div>Du er logget ind som {this.state.userName} - <span onClick={this.logout}>Log ud</span></div> : <span onClick={this.login}>Log ind</span>
