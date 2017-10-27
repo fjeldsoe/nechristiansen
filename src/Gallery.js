@@ -1,14 +1,11 @@
 import React, { Component } from 'react'
 import {
-  Route,
   Link
 } from 'react-router-dom'
-import config from './config'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'
 import 'firebase/database'
-import cuid from 'cuid'
 
 class Gallery extends Component {
 
