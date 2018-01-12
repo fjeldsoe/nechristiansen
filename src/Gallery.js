@@ -1,22 +1,24 @@
 import React, { Component } from 'react'
 import {
-  Route,
-  Link
+  Link,
+  Route
 } from 'react-router-dom'
 import config from './config'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'
 import 'firebase/database'
-import cuid from 'cuid'
+import Painting from './Painting'
 
-class Gallery extends Component {
+export default class Gallery extends Component {
 
-	constructor() {
-		super()
+	constructor(props) {
+		super(props)
 
 		this.loadImages = this.loadImages.bind(this)
 		this.deleteImage = this.deleteImage.bind(this)
+        this.getImageObj = this.getImageObj.bind(this)
+
         this.storageRef = firebase.storage().ref().child('images')
         this.databaseRef = firebase.database().ref().child('images')
 
@@ -52,26 +54,37 @@ class Gallery extends Component {
 
 	loadImages(snapshot) {
 
-		const promiseUrls = []
-		let imagesArr = []
-		const ids = []
+		const urls = []
+		const images = []
 
 		snapshot.forEach(obj => {
 			const url = this.storageRef.child(`${obj.key}/${obj.val().name}`).getDownloadURL()
-			promiseUrls.push(url)
-			imagesArr.push(Object.assign({id: obj.key}, obj.val()))
-			ids.push(obj.key)
+			urls.push(url)
+			images.push(Object.assign({id: obj.key}, obj.val()))
 		})
 
-		Promise.all(promiseUrls).then(urls => {
-
-			imagesArr = urls.map((url, index) => Object.assign(imagesArr[index], {url: url}))
-
+		Promise.all(urls.map(promise => promise.catch(err => this.handleLoadImagesErrors(err, images)))).then(urls => {
 			this.setState({
-				images: imagesArr
+				images: urls.reduce((acc, url, index) => (
+                    url !== undefined ? [...acc, Object.assign(images[index], {url: url})] : [...acc]
+                ), [])
 			})
 		})
 	}
+
+    handleLoadImagesErrors(err, images) {
+
+        const id = images.filter(obj => {
+            const regex = new RegExp(obj.id, 'g');
+            return err.message.match(regex)
+        })[0].id
+
+        // Delete DB entry if image ID doesn't exist in storage
+        this.databaseRef.update({[id]: null})
+
+        // Return undefined in order for Promise.All to resolve if one of the promises return an error
+        return undefined
+    }
 
 	deleteImage(event) {
 
@@ -99,34 +112,25 @@ class Gallery extends Component {
 	}
 
 	render() {
-        const selectedImage = this.props.match.params.id ? this.getImageObj(this.props.match.params.id) : null
+        const match = this.props.match
 
-        console.log(selectedImage);
+        console.log(this.state.images);
 
 		return (
 			<div className="gallery">
 				<main className="grid">
                     {
-                        selectedImage ? (
-                            <div className="grid__col">
-                                {
-                                    <img id={selectedImage.id} className="image" src={selectedImage.url} alt={selectedImage.name} />
-                                }
+                        this.state.images.map((imageObj, index) => (
+                            <div className="grid__col" key={index}>
+                                <Link to={`${match.url}/${imageObj.id}`}>
+                                    <img id={imageObj.id} className="image" src={imageObj.url} alt={imageObj.name} key={index} />
+                                </Link>
                             </div>
-                        ) : (
-                            this.state.images.map((imageObj, index) => (
-        						<div className="grid__col" key={index}>
-                                    <Link to={`/${imageObj.id}`}>
-                                        <img id={imageObj.id} className="image" src={imageObj.url} alt={imageObj.name} key={index} />
-                                    </Link>
-        						</div>
-        					))
-                        )
+                        ))
                     }
+                    <Route path={`${match.url}/:id`} render={props => <Painting {...props} getImageObj={this.getImageObj} />} />
 				</main>
 			</div>
 		);
 	}
 }
-
-export default Gallery

@@ -1,5 +1,7 @@
 import React, { Component } from 'react'
 import {
+  Switch,
+  Redirect,
   Route,
   Link
 } from 'react-router-dom'
@@ -15,8 +17,8 @@ import Gallery from './Gallery'
 
 class App extends Component {
 
-	constructor() {
-		super()
+	constructor(props) {
+		super(props)
 
 		firebase.initializeApp(config.firebase)
 
@@ -25,11 +27,9 @@ class App extends Component {
 
 		this.login = this.login.bind(this)
 		this.logout = this.logout.bind(this)
-
 		this.onDrop = this.onDrop.bind(this)
 		this.onDragOver = this.onDragOver.bind(this)
 		this.onDragEnd = this.onDragEnd.bind(this)
-
 		this.loadImages = this.loadImages.bind(this)
 		this.deleteImage = this.deleteImage.bind(this)
 
@@ -200,8 +200,10 @@ class App extends Component {
 
 		return (
 			<div className="app" onDrop={this.onDrop} onDragOver={this.onDragOver} onDragEnd={this.onDragEnd}>
-				<Route exact path="/" component={Gallery} />
-                <Route exact path="/:id" component={Gallery} />
+                <Switch>
+    				<Route path="/galleri" component={Gallery} />
+                    <Redirect to="/galleri"/>
+                </Switch>
 				<footer className="footer">
 					{
 						this.state.isLoggedIn ? <div>Du er logget ind som {this.state.userName} - <span onClick={this.logout}>Log ud</span></div> : <span onClick={this.login}>Log ind</span>
