@@ -1,5 +1,9 @@
 const functions = require('firebase-functions')
 const admin = require('firebase-admin')
+const gcs = require('@google-cloud/storage')({
+    projectId: 'nechristiansen-7ad6d',
+    keyFilename: './nechristiansen-7ad6d-firebase-adminsdk-x0t6g-b04b4f9583.json'});
+const spawn = require('child-process-promise').spawn;
 
 
 admin.initializeApp({

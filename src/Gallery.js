@@ -3,7 +3,6 @@ import {
   Link,
   Route
 } from 'react-router-dom'
-import config from './config'
 import firebase from 'firebase/app'
 import 'firebase/auth'
 import 'firebase/storage'

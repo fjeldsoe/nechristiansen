@@ -70,6 +70,7 @@ class App extends Component {
 
 		snapshot.forEach(obj => {
 			const url = this.storageRef.child(`${obj.key}/${obj.val().name}`).getDownloadURL()
+            console.log(url)
 			promiseUrls.push(url)
 			imagesArr.push(Object.assign({id: obj.key}, obj.val()))
 			ids.push(obj.key)
